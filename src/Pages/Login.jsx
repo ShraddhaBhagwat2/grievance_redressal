@@ -1,45 +1,45 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Shield, Smartphone, Mail, ArrowRight } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Shield, Smartphone, Mail, ArrowRight } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [role, setRole] = useState('citizen'); // citizen, officer, admin
+  const [role, setRole] = useState("citizen"); // citizen, officer, admin
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
-    mobile_number: '',
-    password: ''
+    mobile_number: "",
+    password: "",
   });
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
-    setError('');
+    setError("");
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    
+
     // For officer/admin, use mock login (no backend yet)
-    if (role !== 'citizen') {
-      if (role === 'officer') navigate('/officer');
-      if (role === 'admin') navigate('/admin');
+    if (role !== "citizen") {
+      if (role === "officer") navigate("/officer");
+      if (role === "admin") navigate("/admin");
       return;
     }
 
     // For citizen, use real API
     setLoading(true);
-    setError('');
-    
+    setError("");
+
     const result = await login(formData.mobile_number, formData.password);
-    
+
     if (result.success) {
-      navigate('/citizen');
+      navigate("/citizen");
     } else {
       setError(result.error);
     }
@@ -49,7 +49,6 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        
         {/* Header */}
         <div className="bg-blue-600 p-6 text-center">
           <div className="mx-auto bg-white w-12 h-12 rounded-full flex items-center justify-center mb-3">
@@ -70,12 +69,14 @@ export default function Login() {
 
           {/* Role Selector (For Hackathon Demo Speed) */}
           <div className="flex bg-slate-100 p-1 rounded-lg mb-6">
-            {['citizen', 'officer', 'admin'].map((r) => (
+            {["citizen", "officer", "admin"].map((r) => (
               <button
                 key={r}
                 onClick={() => setRole(r)}
                 className={`flex-1 py-2 text-sm font-bold capitalize rounded-md transition-all ${
-                  role === r ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                  role === r
+                    ? "bg-white shadow text-blue-600"
+                    : "text-slate-500 hover:text-slate-700"
                 }`}
               >
                 {r}
@@ -86,18 +87,24 @@ export default function Login() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-                {role === 'citizen' ? 'Mobile Number / Email' : 'Official ID'}
+                {role === "citizen" ? "Mobile Number / Email" : "Official ID"}
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-3 text-slate-400">
-                  {role === 'citizen' ? <Smartphone size={18} /> : <Shield size={18} />}
+                  {role === "citizen" ? (
+                    <Smartphone size={18} />
+                  ) : (
+                    <Shield size={18} />
+                  )}
                 </div>
-                <input 
+                <input
                   type="text"
                   name="mobile_number"
                   value={formData.mobile_number}
                   onChange={handleChange}
-                  placeholder={role === 'citizen' ? "+91 98765 43210" : "EMP-ID-2024"} 
+                  placeholder={
+                    role === "citizen" ? "+91 98765 43210" : "EMP-ID-2024"
+                  }
                   required
                   className="w-full pl-10 p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium focus:outline-blue-500"
                 />
@@ -105,35 +112,44 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Password / OTP</label>
-              <input 
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                Password / OTP
+              </label>
+              <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="••••••" 
+                placeholder="••••••"
                 required
                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium focus:outline-blue-500"
               />
             </div>
 
-            <button 
+            <button
               type="submit"
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Logging in...' : `Login as ${role}`} <ArrowRight size={18} />
+              {loading ? "Logging in..." : `Login as ${role}`}{" "}
+              <ArrowRight size={18} />
             </button>
           </form>
 
-          {role === 'citizen' && (
+          {role === "citizen" && (
             <>
               <div className="mt-4 text-center text-xs text-slate-400">
-                Or login via <span className="text-green-600 font-bold cursor-pointer">WhatsApp</span>
+                Or login via{" "}
+                <span className="text-green-600 font-bold cursor-pointer">
+                  WhatsApp
+                </span>
               </div>
               <div className="mt-4 text-center text-sm text-slate-600">
-                Don't have an account?{' '}
-                <Link to="/signup" className="text-blue-600 font-bold hover:underline">
+                Don't have an account?{" "}
+                <Link
+                  to="/signup"
+                  className="text-blue-600 font-bold hover:underline"
+                >
                   Sign up here
                 </Link>
               </div>

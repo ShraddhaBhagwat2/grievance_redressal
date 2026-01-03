@@ -1,18 +1,18 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import Login from './Pages/Login';
-import Signup from './Pages/Signup';
-import Home from './Pages/Home';
-import About from './Pages/About';
-import CitizenPortal from './Pages/CitizenPortal';
-import CitizenProfile from './Pages/CitizenProfile';
-import CitizenCurrent from './Pages/CitizenCurrent';
-import CitizenPrevious from './Pages/CitizenPrevious';
-import CitizenStatus from './Pages/CitizenStatus';
-import OfficerDashboard from './Pages/OfficerDashboard';
-import AdminDashboard from './Pages/AdminDashboard';
-import Contact from './Pages/Contact';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import Login from "./Pages/Login";
+import Signup from "./Pages/Signup";
+import Home from "./Pages/Home";
+import About from "./Pages/About";
+import CitizenPortal from "./Pages/CitizenPortal";
+import CitizenProfile from "./Pages/CitizenProfile";
+import CitizenCurrent from "./Pages/CitizenCurrent";
+import CitizenPrevious from "./Pages/CitizenPrevious";
+import CitizenStatus from "./Pages/CitizenStatus";
+import OfficerDashboard from "./Pages/OfficerDashboard";
+import AdminDashboard from "./Pages/AdminDashboard";
+import Contact from "./Pages/Contact";
 
 function App() {
   return (

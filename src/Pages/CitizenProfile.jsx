@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
-import CitizenNav from '../components/CitizenNav';
-import { useAuth } from '../context/AuthContext';
+import React, { useEffect, useState } from "react";
+import Navbar from "../components/Navbar";
+import CitizenNav from "../components/CitizenNav";
+import { useAuth } from "../context/AuthContext";
 
-export default function CitizenProfile(){
+export default function CitizenProfile() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
 
@@ -36,27 +36,31 @@ export default function CitizenProfile(){
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-slate-500">Name</p>
-              <p className="font-medium">{user?.full_name || 'N/A'}</p>
+              <p className="font-medium">{user?.full_name || "N/A"}</p>
             </div>
             <div>
               <p className="text-sm text-slate-500">Mobile</p>
-              <p className="font-medium">{user?.mobile_number || 'N/A'}</p>
+              <p className="font-medium">{user?.mobile_number || "N/A"}</p>
             </div>
             <div>
               <p className="text-sm text-slate-500">Email</p>
-              <p className="font-medium">{user?.email || 'N/A'}</p>
+              <p className="font-medium">{user?.email || "N/A"}</p>
             </div>
             <div>
               <p className="text-sm text-slate-500">Address</p>
-              <p className="font-medium">{user?.residential_address || 'N/A'}</p>
+              <p className="font-medium">
+                {user?.residential_address || "N/A"}
+              </p>
             </div>
             <div>
               <p className="text-sm text-slate-500">Language</p>
-              <p className="font-medium">{user?.language_preference || 'N/A'}</p>
+              <p className="font-medium">
+                {user?.language_preference || "N/A"}
+              </p>
             </div>
             <div>
               <p className="text-sm text-slate-500">User ID</p>
-              <p className="font-medium text-xs">{user?.id || 'N/A'}</p>
+              <p className="font-medium text-xs">{user?.id || "N/A"}</p>
             </div>
           </div>
         </div>
