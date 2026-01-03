@@ -49,15 +49,25 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-slate-900 to-slate-800 p-4 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-blob"></div>
+        <div className="absolute top-40 right-10 w-72 h-72 bg-orange-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-green-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative z-10 animate-fade-in-up">
         {/* Header */}
-        <div className="bg-blue-600 p-6 text-center">
-          <div className="mx-auto bg-white w-12 h-12 rounded-full flex items-center justify-center mb-3">
-            <Shield className="text-blue-600" size={24} />
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-black opacity-5"></div>
+          <div className="mx-auto bg-white w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-lg relative z-10 transform transition-transform hover:scale-110 duration-300">
+            <Shield className="text-blue-600" size={28} />
           </div>
-          <h1 className="text-2xl font-bold text-white">Create Account</h1>
-          <p className="text-blue-100 text-sm">
+          <h1 className="text-3xl font-bold text-white mb-2 relative z-10">
+            Create Account
+          </h1>
+          <p className="text-blue-50 relative z-10">
             Join CivicConnect Grievance Portal
           </p>
         </div>
@@ -65,8 +75,11 @@ export default function Signup() {
         {/* Signup Form */}
         <div className="p-8">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {typeof error === "string" ? error : JSON.stringify(error)}
+            <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg text-red-700 text-sm animate-shake flex items-start gap-3">
+              <div className="text-red-500 flex-shrink-0">⚠️</div>
+              <div>
+                {typeof error === "string" ? error : JSON.stringify(error)}
+              </div>
             </div>
           )}
 
@@ -204,10 +217,22 @@ export default function Signup() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
             >
-              {loading ? "Creating Account..." : "Create Account"}{" "}
-              <ArrowRight size={18} />
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                  Creating Account...
+                </>
+              ) : (
+                <>
+                  Create Account{" "}
+                  <ArrowRight
+                    size={18}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
+                </>
+              )}
             </button>
           </form>
 
@@ -215,10 +240,14 @@ export default function Signup() {
             Already have an account?{" "}
             <Link
               to="/login"
-              className="text-blue-600 font-bold hover:underline"
+              className="text-blue-600 font-bold hover:text-blue-700 transition-colors duration-200 hover:underline"
             >
               Login here
             </Link>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-slate-100 text-center text-xs text-slate-400">
+            By signing up, you agree to our Terms of Service and Privacy Policy
           </div>
         </div>
       </div>
