@@ -4,6 +4,30 @@ import CitizenNav from '../components/CitizenNav';
 import api, { grievanceAPI } from '../services/api';
 
 export default function CitizenCurrent(){
+  // Helper to robustly resolve an identifier for a grievance item
+  const resolveId = (it) => {
+    if (!it) return null;
+    return (
+      it.form_id || it.id || it._id?.$oid || it._id || it.formId || it.ticket_id || it.ticketId || null
+    );
+  };
+  const [expandedId, setExpandedId] = React.useState(null);
+  const formatDate = (v) => {
+    if (!v) return '-';
+    try {
+      const raw = (typeof v === 'string') ? v : (v?.$date || v);
+      const d = new Date(raw);
+      if (isNaN(d)) return String(v);
+      return d.toLocaleString();
+    } catch (e) { return String(v); }
+  };
+  const buildImageUrl = (p) => {
+    if (!p) return null;
+    if (typeof p !== 'string') return null;
+    if (p.startsWith('http')) return p;
+    const cleaned = p.replace(/^\.\/?/, '').replace(/\\/g, '/');
+    return `${api.defaults.baseURL.replace(/\/$/, '')}/${cleaned}`;
+  };
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -21,13 +45,12 @@ export default function CitizenCurrent(){
       } catch (e) {
         // ignore - unauthenticated or endpoint missing
       }
-
-      // prefer the official /grievance/forms route which returns all submitted forms for the logged-in user
-      const endpoints = [];
+      // Prefer official grievance endpoints first to avoid 404s from missing user-scoped routes
+      const endpoints = ['/grievance/forms', '/grievance/list', '/grievance/my/forms', '/grievance/user/forms', '/grievance'];
+      // Only try user-scoped endpoints after official ones (some backends don't implement these)
       if (userId) {
         endpoints.push(`/users/${userId}/grievances`, `/users/${userId}/forms`, `/users/${userId}/tickets`);
       }
-      endpoints.push('/grievance/forms','/grievance/list','/grievance/my/forms','/grievance/user/forms','/grievance');
       for (const ep of endpoints) {
         try {
           const res = await api.get(ep);
@@ -38,12 +61,14 @@ export default function CitizenCurrent(){
           else if (data && Array.isArray(data.results)) list = data.results;
           if (list.length > 0) {
             if (!mounted) return;
-            // show only active (non-resolved) grievances as "current"
-            const active = list.filter(i => {
+            // show only assigned or linked grievances for "current", and exclude completed/closed
+            const filtered = list.filter(i => {
               const s = (i.status || i.ticket_status || '').toString().toLowerCase();
-              return !s.includes('resolv') && !s.includes('closed') && !s.includes('completed');
+              const isCompleted = s.includes('resolv') || s.includes('closed') || s.includes('completed') || s.includes('complete');
+              const isAssignedOrLinked = Boolean(i.assigned_officer_id || i.parent_form_id || i.parent_ticket_id || i.linked_to);
+              return isAssignedOrLinked && !isCompleted;
             });
-            setItems(active.length > 0 ? active : list);
+            setItems(filtered.length > 0 ? filtered : []);
             setLoading(false);
             return;
           }
@@ -89,10 +114,22 @@ export default function CitizenCurrent(){
             <div className="text-sm text-slate-500">No current grievances found.</div>
           )}
           {items.map((t) => (
-            <div key={t.id} className="bg-white p-4 rounded-xl border border-slate-100">
+            <div key={resolveId(t) || Math.random()} onClick={async () => {
+                // on click, refresh this item's latest form data from the server
+                try {
+                  const id = resolveId(t);
+                  if (!id) return;
+                  const res = await grievanceAPI.getForm(id);
+                  const updated = res?.data || res?.data?.result || res;
+                  setItems(prev => prev.map(p => ((resolveId(p) === id) ? { ...p, ...updated, form_id: updated.form_id || id } : p)));
+                  setExpandedId(id);
+                } catch (e) {
+                  console.error('Failed to refresh grievance', e);
+                }
+              }} className="bg-white p-4 rounded-xl border border-slate-100 cursor-pointer hover:shadow">
               <div className="flex justify-between items-start">
                 <div>
-                  <div className="text-sm text-slate-500">{t.id}</div>
+                  <div className="text-sm text-slate-500">{resolveId(t)}</div>
                   <div className="font-bold text-slate-800">{t.title || t.subject || t.extracted_data?.title}</div>
                 </div>
                 <div className="text-right">
@@ -100,6 +137,22 @@ export default function CitizenCurrent(){
                   <div className="text-sm text-slate-600">ETA: {t.eta || t.estimated_resolution || '—'}</div>
                 </div>
               </div>
+              {resolveId(t) === expandedId && (
+                <div className="mt-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><strong>Category:</strong> {t.category || '-'}</div>
+                    <div><strong>Priority:</strong> {t.priority || '-'}</div>
+                    <div><strong>Assigned:</strong> {t.assigned_officer_name || '-'}</div>
+                    <div><strong>Status:</strong> {t.status || '-'}</div>
+                    <div><strong>ETA:</strong> {t.estimated_response_time || t.eta || '—'}</div>
+                    <div><strong>Resolved:</strong> {t.resolved_at ? formatDate(t.resolved_at?.$date || t.resolved_at) : '-'}</div>
+                  </div>
+                  <div className="mt-2 text-sm text-slate-800 line-clamp-4">{(t.full_description || t.original_text || '').slice(0,200)}{(t.full_description||t.original_text||'').length>200?'...':''}</div>
+                  {t.resolution_photos && t.resolution_photos[0] && (
+                    <img src={buildImageUrl(t.resolution_photos[0])} alt="resolution" className="w-44 h-32 object-cover rounded mt-3" />
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

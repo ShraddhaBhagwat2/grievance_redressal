@@ -1,24 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Layers, Clock, AlertTriangle } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { officerAPI } from '../services/api';
 
 export default function OfficerDashboard() {
-  const [selectedTicket, setSelectedTicket] = useState(null);
+    const [selectedTicket, setSelectedTicket] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-  // Mock Cluster Data (Diagram: "Insights on repetitiveness")
+    // Mock Cluster Data (Diagram: "Insights on repetitiveness")
   const clusters = [
     { id: 1, title: "Station Road Potholes", count: 14, urgency: "High" },
     { id: 2, title: "Water Cut Ward C", count: 52, urgency: "Critical" },
   ];
 
-    const [tickets, setTickets] = useState([
-        { id: "GR-102", category: "Sanitation", urgency: 9, status: "New", summary: "Garbage overflow at Market", evidenceValidated:false },
-        { id: "GR-104", category: "Roads", urgency: 7, status: "Pending", summary: "Pothole on Main St", evidenceValidated:false },
-    ]);
+        const [tickets, setTickets] = useState([]);
 
-    function updateTicket(id, patch){
-        setTickets(prev=> prev.map(t => t.id===id? {...t, ...patch}: t));
-    }
+        function updateTicketLocal(id, patch){
+                setTickets(prev=> prev.map(t => (t.ticket?.grievance_id||t.id)===id? {...t, ticket:{...t.ticket,...patch}}: t));
+        }
+
+        // fetch officer dashboard on mount
+        useEffect(() => {
+            let mounted = true;
+            const load = async () => {
+                setLoading(true);
+                try {
+                    const res = await officerAPI.getDashboard();
+                    if (!mounted) return;
+                    // expected array of items
+                    setTickets(Array.isArray(res.data) ? res.data : []);
+                } catch (e) {
+                    console.error('Failed to load officer dashboard', e);
+                    setError(e?.response?.data || e.message || 'Failed to load');
+                } finally {
+                    if (mounted) setLoading(false);
+                }
+            };
+            load();
+            return () => { mounted = false; };
+        }, []);
 
   return (
         <div className="min-h-screen bg-slate-50">
@@ -70,10 +91,28 @@ export default function OfficerDashboard() {
                             <td className="p-4 text-red-600 font-bold">{t.urgency}/10</td>
                             <td className="p-4">
                                 <div className="flex gap-2">
-                                  <button onClick={() => setSelectedTicket(t)} className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 hover:bg-blue-600"><FileText size={12} /> View</button>
-                                  <button onClick={() => updateTicket(t.id,{status:'Assigned'})} className="px-2 py-1 rounded text-xs border">Assign</button>
-                                  <button onClick={() => updateTicket(t.id,{status:'In-Field Action'})} className="px-2 py-1 rounded text-xs border">Start Work</button>
-                                  <button onClick={() => updateTicket(t.id,{status:'Resolved'})} className="px-2 py-1 rounded text-xs bg-green-50 text-green-600">Resolve</button>
+                                                                    <button onClick={() => setSelectedTicket(t)} className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 hover:bg-blue-600"><FileText size={12} /> View</button>
+                                                                    <button onClick={async () => {
+                                                                        const gid = t.ticket?.grievance_id || t.id;
+                                                                        try {
+                                                                            await officerAPI.updateStatus({ grievance_id: gid, new_status: 'assigned', progress_note: 'Assigned via app' });
+                                                                            updateTicketLocal(gid, { status: 'assigned', assigned_at: new Date().toISOString() });
+                                                                        } catch (e) { console.error(e); alert('Failed to assign'); }
+                                                                    }} className="px-2 py-1 rounded text-xs border">Assign</button>
+                                                                    <button onClick={async () => {
+                                                                        const gid = t.ticket?.grievance_id || t.id;
+                                                                        try {
+                                                                            await officerAPI.updateStatus({ grievance_id: gid, new_status: 'in_progress', progress_note: 'Work started' });
+                                                                            updateTicketLocal(gid, { status: 'in_progress', started_at: new Date().toISOString() });
+                                                                        } catch (e) { console.error(e); alert('Failed to start'); }
+                                                                    }} className="px-2 py-1 rounded text-xs border">Start Work</button>
+                                                                    <button onClick={async () => {
+                                                                        const gid = t.ticket?.grievance_id || t.id;
+                                                                        try {
+                                                                            await officerAPI.updateStatus({ grievance_id: gid, new_status: 'resolved', progress_note: 'Resolved via app' });
+                                                                            updateTicketLocal(gid, { status: 'resolved', resolved_at: new Date().toISOString() });
+                                                                        } catch (e) { console.error(e); alert('Failed to resolve'); }
+                                                                    }} className="px-2 py-1 rounded text-xs bg-green-50 text-green-600">Resolve</button>
                                 </div>
                             </td>
                         </tr>
@@ -81,6 +120,9 @@ export default function OfficerDashboard() {
                 </tbody>
             </table>
         </div>
+
+                {loading && <div className="mt-4 text-sm text-slate-500">Loading tickets...</div>}
+                {error && <div className="mt-4 text-sm text-red-600">{String(error)}</div>}
 
         {/* AGENT SCRIBE (Diagram Req: "Auto Draft Generation") */}
         {selectedTicket && (

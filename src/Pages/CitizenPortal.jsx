@@ -102,10 +102,86 @@ export default function CitizenPortal() {
   }
 
   // Mock History Data (Diagram Requirement: "Previous Grievances")
-  const history = [
-    { id: 101, title: "Broken Streetlight", status: "Resolved", date: "2 days ago", feedbackGiven: false },
-    { id: 102, title: "Garbage Pileup", status: "In Progress", date: "Today", feedbackGiven: false },
-  ];
+  // Recent activity - load dynamically from backend (/grievance/forms)
+  const [recent, setRecent] = useState([]);
+  const [recentLoading, setRecentLoading] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailData, setDetailData] = useState(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const loadRecent = async () => {
+      setRecentLoading(true);
+      try {
+        const res = await grievanceAPI.getForms();
+        const data = res?.data ?? res;
+        let list = [];
+        if (Array.isArray(data)) list = data;
+        else if (data && Array.isArray(data.items)) list = data.items;
+        else if (data && Array.isArray(data.results)) list = data.results;
+        // normalize and pick most recent 5
+        const mapped = (list || []).map(it => ({
+          id: it.form_id || it.id || it._id?.$oid || it._id,
+          title: it.title || it.full_description?.slice(0,80) || it.original_text?.slice(0,80) || 'Grievance',
+          status: it.status || it.ticket_status || (it.resolved_at ? 'Resolved' : 'Open'),
+          date: it.submitted_at?.$date || it.submitted_at || it.created_at?.$date || it.created_at || null,
+          photo: (it.resolution_photos && it.resolution_photos[0]) || (it.document_paths && it.document_paths[0]) || null,
+        }));
+        if (mounted) setRecent(mapped.slice(0,5));
+      } catch (e) {
+        console.debug('Failed to load recent grievances', e);
+      } finally {
+        if (mounted) setRecentLoading(false);
+      }
+    };
+    loadRecent();
+    return () => { mounted = false; };
+  }, []);
+
+  const formatDate = (v) => {
+    if (!v) return '-';
+    try { const raw = (typeof v === 'string') ? v : (v?.$date || v); const d = new Date(raw); return isNaN(d) ? String(v) : d.toLocaleString(); } catch(e){return String(v);} 
+  };
+  const buildImageUrl = (p) => {
+    if (!p) return null; if (typeof p !== 'string') return null; if (p.startsWith('http')) return p; const cleaned = p.replace(/^\.\/?/, '').replace(/\\/g, '/'); return `${grievanceAPI.getForms ? window.location.origin : ''}/${cleaned}`;
+  };
+
+  const openDetailModal = async (id) => {
+    if (!id) return;
+    setDetailOpen: false;
+    setDetailLoading(true);
+    setDetailModalOpen(true);
+    try {
+      const res = await grievanceAPI.getForm(id);
+      const data = res?.data || res;
+      setDetailData(data);
+    } catch (e) {
+      console.error('Failed to load detail', e);
+      setDetailData({ error: 'Failed to load details' });
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleConfirm = async (id) => {
+    if (!id) return;
+    try {
+      setDetailLoading(true);
+      const res = await grievanceAPI.confirmResolution(id);
+      // try to refresh recent list and detail
+      const refreshed = await (await grievanceAPI.getForm(id)).data;
+      setDetailData(refreshed || {});
+      // refresh recent list
+      setRecent(r => r.map(i => (i.id === id ? { ...i, status: refreshed.status || 'Resolved' } : i)));
+      alert('Confirmed. Thank you.');
+      setDetailLoading(false);
+    } catch (e) {
+      console.error('Confirm error', e);
+      alert('Failed to confirm: ' + (e?.response?.data?.message || e.message || 'Unknown'));
+      setDetailLoading(false);
+    }
+  };
 
   const sampleTicketProgress = {
     id: 'GR-2024-99',
@@ -155,33 +231,73 @@ export default function CitizenPortal() {
           {/* Current Status Cards */}
           <h2 className="text-sm font-bold text-slate-500 uppercase">Recent Activity</h2>
           <div className="space-y-3">
-            {history.map((item) => (
+            {recentLoading && (
+              <div className="text-sm text-slate-500">Loading recent activity…</div>
+            )}
+            {!recentLoading && recent.length === 0 && (
+              <div className="text-sm text-slate-500">No recent activity.</div>
+            )}
+            {recent.map((item) => (
               <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-slate-800">{item.title}</h3>
-                  <span className={`text-xs px-2 py-1 rounded font-bold ${item.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                  <span className={`text-xs px-2 py-1 rounded font-bold ${item.status && item.status.toLowerCase().includes('resolv') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                     {item.status}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs text-slate-400">
-                  <span>{item.date}</span>
-                  {item.status === 'Resolved' && !item.feedbackGiven && (
-                    <button className="text-blue-600 font-bold flex items-center gap-1">
-                      <Star size={12} /> Give Feedback
-                    </button>
-                  )}
+                  <span>{item.date ? new Date(item.date).toLocaleString() : ''}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => openDetailModal(item.id)} className="text-sm text-blue-600 font-bold">View & Confirm</button>
+                    {item.status && item.status.toLowerCase().includes('resolv') ? (
+                      <button className="text-blue-600 font-bold flex items-center gap-1">
+                        <Star size={12} /> Give Feedback
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-
-                {item.status === 'Resolved' && (
+                {item.photo && (
                   <div className="mt-3 border-t pt-3 flex items-center gap-3">
-                    <div className="w-20 h-14 bg-slate-100 rounded overflow-hidden flex items-center justify-center text-slate-400">Photo</div>
-                    <div className="flex-1 text-xs text-slate-600">Officer uploaded "After" photo. Evidence geo-tagged & time-stamped.</div>
-                    <button className="text-sm text-green-600 font-bold">View & Confirm</button>
+                    <img src={item.photo && (item.photo.startsWith('http') ? item.photo : buildImageUrl(item.photo))} alt="thumb" className="w-20 h-14 object-cover rounded" />
+                    <div className="flex-1 text-xs text-slate-600">Click to view updates in Current / Previous sections.</div>
                   </div>
                 )}
               </div>
             ))}
           </div>
+
+          {/* Detail Modal */}
+          {detailModalOpen && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+              <div className="bg-white max-w-2xl w-full rounded-xl shadow-lg p-6 overflow-auto max-h-[80vh]">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="font-bold text-lg">Grievance Details</h3>
+                  <button onClick={() => { setDetailModalOpen(false); setDetailData(null); }} className="text-slate-500">Close</button>
+                </div>
+                {detailLoading && <div>Loading…</div>}
+                {!detailLoading && detailData && (
+                  <div className="space-y-3 text-sm">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><strong>Form ID:</strong> {detailData.form_id || detailData.formId || detailData._id?.$oid}</div>
+                      <div><strong>Status:</strong> {detailData.status || detailData.ticket_status || '-'}</div>
+                      <div><strong>Category:</strong> {detailData.category || '-'}</div>
+                      <div><strong>Priority:</strong> {detailData.priority || '-'}</div>
+                      <div><strong>Assigned:</strong> {detailData.assigned_officer_name || '-'}</div>
+                      <div><strong>Resolved At:</strong> {formatDate(detailData.resolved_at?.$date || detailData.resolved_at)}</div>
+                    </div>
+                    <div><strong>Description:</strong><div className="mt-1 text-slate-800 whitespace-pre-line">{detailData.full_description || detailData.original_text || '-'}</div></div>
+                    {detailData.resolution_photos && detailData.resolution_photos.length > 0 && (
+                      <div className="flex gap-2 flex-wrap mt-2">{detailData.resolution_photos.map((p,i)=>(<img key={i} src={buildImageUrl(p)} alt={`res-${i}`} className="w-32 h-24 object-cover rounded"/>))}</div>
+                    )}
+                    <div className="flex gap-3 justify-end">
+                      <button onClick={() => setDetailModalOpen(false)} className="px-4 py-2 border rounded">Close</button>
+                      <button onClick={() => handleConfirm(detailData.form_id || detailData.formId || detailData._id?.$oid)} disabled={detailLoading} className="px-4 py-2 bg-green-600 text-white rounded">{detailLoading ? 'Confirming…' : 'Confirm Resolution'}</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Floating Action Button for New Complaint */}
           <button 
